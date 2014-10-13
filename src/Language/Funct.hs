@@ -4,7 +4,7 @@ import Language.Funct.Parser
 
 main = do
     let programText = ""
-    let programText1 = "int d34db33f  \nhello\nhello world\nhello|world|spaces\nint -> int\ndog cat"
+    let programText1 = "int d34db33f  \nhello\nhello world\nhello|world|spaces\nhello :: int -> int\nhello = dog cat"
     let typeText1 = "person name age"
     let typeText2 = "(person) ((name)|(nickname)) (age)\n"
     let typeText3 = "person"
@@ -14,10 +14,6 @@ main = do
         Left  error   -> print error
         Right program -> print program
 
-    {-case parse functionParser "Funct" functionText1 of
-        Left  error   -> print error
-        Right program -> print program
-
     case functParse programText1 of
         Left  error   -> print error
-        Right program -> print program-}
+        Right program -> print program

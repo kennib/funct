@@ -15,7 +15,7 @@ programParser = liftM Program $
 
 definitionParser :: Parser Definition
 definitionParser = (try aliasDefinitionParser)
-         <|> (try $ liftM FunctionDefinition functionParser)
+         <|> (try functionDefinitionParser)
          <|> (try $ liftM TypeDefinition typeParser)
 
 
@@ -57,15 +57,25 @@ productTypeParser = liftM ProductType $
    (parentheses typeParser) `sepBy1` spaces
 
 
-functionParser :: Parser Function
-functionParser = liftM2 Function
-    functionTypeParser
-    (valueParser `sepBy` spaces)
+functionDefinitionParser :: Parser Definition
+functionDefinitionParser = do 
+    (alias, values) <- functionBodyParser
+    (alias, types) <- functionTypeParser
+    let function = Function types values
 
-functionTypeParser :: Parser [Type]
-functionTypeParser = withSpaces typeParser
+    return $ FunctionDefinition alias function
+
+functionTypeParser :: Parser (Alias, [Type])
+functionTypeParser = liftM2 (,)
+    (withSpaces aliasParser `ignore` withSpaces (string "::"))
+    (withSpaces typeParser
     `sepBy` withSpaces (string "->")
-    `ignore` newline
+    `ignore` newline)
+
+functionBodyParser :: Parser (Alias, [Value String])
+functionBodyParser = liftM2 (,)
+    (withSpaces aliasParser `ignore` withSpaces (char '='))
+    (valueParser `sepBy` spaces)
 
 valueParser :: Parser (Value String)
 valueParser = liftM Value $
