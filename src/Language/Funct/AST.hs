@@ -2,26 +2,22 @@ module Language.Funct.AST where
 
 import Data.TypeHash
 
-data Program = Program [Definition] 
+data Program = Program
+    [Definition (Type Hash)]
+    [Definition (Type String)]
+    [Definition (Function Hash)]
+    [Definition (Function String)]
     deriving (Show)
 
-data Definition = AliasDefinition Alias Hash
-                | TypeDefinition Type
-                | FunctionDefinition Alias Function
+data Definition a = Definition Alias a
     deriving (Show)
 
-data Type = SumType [Type]
-          | ProductType [Type]
-          | TypeHash Hash
-          | TypeAlias Alias
+data Type a = Type a
     deriving (Show)
-
-data Function = Function [Type] [Value String]
+data Function a = Function a
     deriving (Show)
 
 data Alias = Alias String
     deriving (Show)
 data Hash = Hash TypeHash
-    deriving (Show)
-data Value a = Value a
     deriving (Show)

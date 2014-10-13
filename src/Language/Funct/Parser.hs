@@ -1,97 +1,71 @@
 module Language.Funct.Parser where
 
 import Control.Monad (liftM, liftM2, liftM3)
-import Text.ParserCombinators.Parsec hiding (space, spaces)
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Token
+import Text.ParserCombinators.Parsec.Language (haskellDef, haskellStyle)
+import Text.Parsec.Prim (parserReturn)
 
 import Language.Funct.AST
 
-functParse :: String -> Either ParseError Program
-functParse = parse programParser "Funct"
+-- Language Definition
+functDef = haskellDef
+functStyle = haskellStyle
 
-programParser :: Parser Program
-programParser = liftM Program $
-    withSpaces definitionParser `sepBy` newline
-    `ignore` eof
+-- Parser
+functParser :: Parser Program
+functParser = do
+    typesHashed        <- many (try $ definitionParser typeAssign                 $ typeParser hash)
+    types              <- many (try $ definitionParser typeAssign                 $ typeParser restOfLine)
+    functionsHashed    <- many (try $ definitionParser assign                     $ functionParser hash)
+    functions          <- many (try $ definitionParser (lookAhead functionAssign) $ functionParser restOfLine)
+    _ <- eof
 
-definitionParser :: Parser Definition
-definitionParser = (try aliasDefinitionParser)
-         <|> (try functionDefinitionParser)
-         <|> (try $ liftM TypeDefinition typeParser)
+    return $ Program
+        typesHashed
+        types
+        functionsHashed
+        functions
 
+definitionParser :: Parser b -> Parser a -> Parser (Definition a)
+definitionParser assignParser valueParser = do
+    alias' <- alias
+    _      <- assignParser
+    value  <- valueParser
+    _      <- many newline
 
-aliasDefinitionParser :: Parser Definition
-aliasDefinitionParser = liftM2 AliasDefinition
-    (withSpaces aliasParser)
-    hashParser
+    return $ Definition alias' value
 
-aliasParser :: Parser Alias
-aliasParser = liftM Alias
-    (many1 letter)
+typeParser :: Parser a -> Parser (Type a)
+typeParser = liftM Type
 
-hashParser :: Parser Hash
-hashParser = liftM Hash $
-    liftM typeHash (many1 hex)
-    where hex = oneOf ['a'..'f'] <|> digit
+functionParser :: Parser a -> Parser (Function a)
+functionParser = liftM Function 
 
+-- Lexer
+lexer = makeTokenParser haskellDef
 
-typeParser :: Parser Type
-typeParser = try typeAliasParser
-         <|> try typeHashParser
-         <|> try sumTypeParser
-         <|> try productTypeParser
+ident = identifier lexer
 
-typeAliasParser :: Parser Type
-typeAliasParser = liftM TypeAlias
-    aliasParser
+assign = reservedOp lexer "="
+typeAssign = reservedOp lexer "::"
+functionAssign = do
+    many ident
+    assign
 
-typeHashParser :: Parser Type
-typeHashParser = liftM TypeHash
-    hashParser
+restOfLine = manyTill anyChar $ lookAhead (eof <|> (newline >> return ()))
+ignoreLine = restOfLine >> return ()
 
-sumTypeParser :: Parser Type
-sumTypeParser = liftM SumType $
-   (parentheses typeParser) `sepBy1` (withSpaces $ char '|')
+alias :: Parser Alias
+alias = liftM Alias $ identifier lexer
 
-productTypeParser :: Parser Type
-productTypeParser = liftM ProductType $
-   (parentheses typeParser) `sepBy1` spaces
+hash :: Parser Hash
+hash = do
+    _ <- char '#'
+    hashString <- hex
+    return $ Hash $ typeHash hashString
 
+hex = many1 $ oneOf ['a'..'f'] <|> digit
 
-functionDefinitionParser :: Parser Definition
-functionDefinitionParser = do 
-    (alias, values) <- functionBodyParser
-    (alias, types) <- functionTypeParser
-    let function = Function types values
-
-    return $ FunctionDefinition alias function
-
-functionTypeParser :: Parser (Alias, [Type])
-functionTypeParser = liftM2 (,)
-    (withSpaces aliasParser `ignore` withSpaces (string "::"))
-    (withSpaces typeParser
-    `sepBy` withSpaces (string "->")
-    `ignore` newline)
-
-functionBodyParser :: Parser (Alias, [Value String])
-functionBodyParser = liftM2 (,)
-    (withSpaces aliasParser `ignore` withSpaces (char '='))
-    (valueParser `sepBy` spaces)
-
-valueParser :: Parser (Value String)
-valueParser = liftM Value $
-    many1 letter
-
-
-withSpaces = between (optional spaces) (optional spaces)
-spaces = skipMany space
-space = char ' '
-
-parentheses  = between (char '(') (char ')')
-
-ignore p1 p2 = do
-    pa <- p1
-    pb <- p2
-    return pa
-ignoreThen p1 p2 = p1 >> p2
-
+-- Misc.
 typeHash s = read $ "TypeHash " ++ show s
