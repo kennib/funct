@@ -1,6 +1,6 @@
 module Language.Funct.Parser where
 
-import Control.Monad (liftM, liftM2, liftM3)
+import Control.Monad (liftM, liftM2, liftM3, liftM4)
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Token
 import Text.ParserCombinators.Parsec.Language (haskellDef, haskellStyle)
@@ -14,18 +14,25 @@ functStyle = haskellStyle
 
 -- Parser
 functParser :: Parser Program
-functParser = do
-    typesHashed        <- many (try $ definitionParser typeAssign                 $ typeParser hash)
-    types              <- many (try $ definitionParser typeAssign                 $ typeParser restOfLine)
-    functionsHashed    <- many (try $ definitionParser assign                     $ functionParser hash)
-    functions          <- many (try $ definitionParser (lookAhead functionAssign) $ functionParser restOfLine)
-    _ <- eof
+functParser = applyTill defParser (Program [] [] [] []) eof
 
-    return $ Program
-        typesHashed
-        types
-        functionsHashed
-        functions
+defParser :: Parser Program -> Parser Program
+defParser program = do
+    Program typesHashed types functionsHashed functions <- program
+
+    typesHashed'     <- option typesHashed     (liftM2 append (try typeHashed)         $ return typesHashed)
+    types'           <- option types           (liftM2 append (try typeDefinition)     $ return types)
+    functionsHashed' <- option functionsHashed (liftM2 append (try functionHashed)     $ return functionsHashed)
+    functions'       <- option functions       (liftM2 append (try functionDefinition) $ return functions)
+
+    return $ Program typesHashed' types' functionsHashed' functions'
+
+    where append x xs = xs ++ [x]
+
+typeHashed         = definitionParser typeAssign                 $ typeParser hash
+typeDefinition     = definitionParser typeAssign                 $ typeParser restOfLine
+functionHashed     = definitionParser assign                     $ functionParser hash
+functionDefinition = definitionParser (lookAhead functionAssign) $ functionParser restOfLine
 
 definitionParser :: Parser b -> Parser a -> Parser (Definition a)
 definitionParser assignParser valueParser = do
@@ -69,3 +76,10 @@ hex = many1 $ oneOf ['a'..'f'] <|> digit
 
 -- Misc.
 typeHash s = read $ "TypeHash " ++ show s
+
+applyTill :: (Parser a -> Parser a) -> a -> Parser b -> Parser a
+applyTill apply base end =
+        (do try end; return base)
+    <|> do
+        base' <- apply $ return base
+        applyTill apply base' end
