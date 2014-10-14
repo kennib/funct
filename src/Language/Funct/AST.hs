@@ -18,6 +18,6 @@ data Function a = Function a
     deriving (Show)
 
 data Alias = Alias String
-    deriving (Show)
+    deriving (Eq, Show)
 data Hash = Hash TypeHash
-    deriving (Show)
+    deriving (Eq, Show)
