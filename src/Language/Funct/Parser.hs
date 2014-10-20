@@ -70,13 +70,11 @@ hash :: Parser Hash
 hash = do
     _ <- char '#'
     hashString <- hex
-    return $ Hash $ typeHash hashString
+    return $ Hash hashString
 
 hex = many1 $ oneOf ['a'..'f'] <|> digit
 
 -- Misc.
-typeHash s = read $ "TypeHash " ++ show s
-
 applyTill :: (Parser a -> Parser a) -> a -> Parser b -> Parser a
 applyTill apply base end =
         (do try end; return base)

@@ -13,7 +13,7 @@ data Definition a = Definition Alias a
 data Type a = Type a
     deriving (Show)
 data Function a = Function a
-    deriving (Show)
+    deriving (Show, Read)
 
 data Alias = Alias String
     deriving (Eq, Show)

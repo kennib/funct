@@ -1,24 +1,30 @@
 module Language.Funct.Compiler where
 
+import Control.Monad (mapM)
 import Data.List (find)
 
 import Language.Funct.AST
 import Language.Funct.Linker
 
-compile = compileHaskell . translateProgram
+compile program = do
+    program' <- translateProgram program
+    return $ compileHaskell program'
 
 compileHaskell :: String -> String
 compileHaskell = id
 
-translateProgram :: Program -> String
-translateProgram program = 
-    (unlines $ map (translateType functions) types)
-    ++ "\n"++
-    (unlines $ map translateFunction functions)
+translateProgram :: Program -> IO String
+translateProgram program = do
+    let types     = map getHashType     typesHashed     ++ typesDefined
+    functionsHashDefined <- mapM getHashFunction functionsHashed
+    let functions = functionsHashDefined ++ functionsDefined
+
+    return $
+        (unlines $ map (translateType functions) types)
+        ++ "\n"++
+        (unlines $ map translateFunction functions)
 
     where Program typesHashed typesDefined functionsHashed functionsDefined = program
-          types     = map getHashType     typesHashed     ++ typesDefined
-          functions = map getHashFunction functionsHashed ++ functionsDefined
 
 translateType :: [Definition (Function a)] -> Definition (Type String) -> String
 translateType  functionDefs (Definition alias (Type s)) = case findAlias alias functionDefs of
