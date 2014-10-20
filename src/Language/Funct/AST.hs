@@ -1,7 +1,5 @@
 module Language.Funct.AST where
 
-import Data.TypeHash
-
 data Program = Program
     [Definition (Type Hash)]
     [Definition (Type String)]
@@ -19,5 +17,5 @@ data Function a = Function a
 
 data Alias = Alias String
     deriving (Eq, Show)
-data Hash = Hash TypeHash
+data Hash = Hash String
     deriving (Eq, Show)
