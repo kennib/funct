@@ -8,9 +8,6 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module Network.Funct.Server where
-
-
 import Control.Applicative (pure)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger
@@ -74,3 +71,7 @@ functServer = do
     server $ do
         serveFunctions
         receiveFunctions
+
+main :: IO ()
+main = do
+    functServer
